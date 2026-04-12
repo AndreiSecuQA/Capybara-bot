@@ -5,7 +5,6 @@ from i18n import t
 from bot.keyboards import food_action_keyboard
 from bot.progress import show_daily_progress
 from bot.ai_engine import analyze_food_photo
-import aiohttp
 
 async def handle_food_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle food photo upload"""

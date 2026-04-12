@@ -2,18 +2,13 @@ import json
 import logging
 import io
 import PIL.Image
-import google.generativeai as genai
+from google import genai
 
 from config import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 
-# Initialize Gemini
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Models
-_vision_model = genai.GenerativeModel(GEMINI_MODEL)   # gemini-1.5-flash supports vision
-_text_model = genai.GenerativeModel(GEMINI_MODEL)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 async def analyze_food_photo(image_bytes: bytes, lang: str) -> dict:
@@ -33,7 +28,10 @@ async def analyze_food_photo(image_bytes: bytes, lang: str) -> dict:
 }
 Be as accurate as possible based on typical portion sizes."""
 
-        response = _vision_model.generate_content([prompt, image])
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[prompt, image]
+        )
         text = response.text.strip()
 
         # Strip markdown code blocks if present
@@ -97,7 +95,10 @@ Today's data: calories consumed={total_calories}/{calorie_target} target, protei
 
 Give ONE short, specific, motivating tip (max 1 sentence) based on this data. Be concrete and actionable."""
 
-        response = _text_model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
         return response.text.strip()
 
     except Exception as e:
