@@ -1,99 +1,110 @@
-import anthropic
-import base64
 import json
-from config import ANTHROPIC_API_KEY
+import logging
+import io
+import PIL.Image
+import google.generativeai as genai
 
-try:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-except Exception:
-    # Fallback for testing or if API key is not available
-    client = None
+from config import GEMINI_API_KEY, GEMINI_MODEL
+
+logger = logging.getLogger(__name__)
+
+# Initialize Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Models
+_vision_model = genai.GenerativeModel(GEMINI_MODEL)   # gemini-1.5-flash supports vision
+_text_model = genai.GenerativeModel(GEMINI_MODEL)
+
 
 async def analyze_food_photo(image_bytes: bytes, lang: str) -> dict:
-    """Send photo to Claude Vision and get nutrition data"""
+    """Send food photo to Gemini Vision and get nutrition data as JSON."""
     try:
-        image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
+        image = PIL.Image.open(io.BytesIO(image_bytes))
 
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=500,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": image_b64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": """Analyze this food photo and respond ONLY with a JSON object (no markdown, no code blocks):
+        prompt = """Analyze this food photo and respond ONLY with a valid JSON object, no other text:
 {
-  "meal_name": "descriptive meal name",
-  "calories": <integer>,
+  "meal_name": "descriptive meal name in English",
+  "calories": <integer estimate>,
   "protein_g": <float>,
   "carbs_g": <float>,
   "fat_g": <float>,
   "confidence": "low|medium|high",
-  "notes": "brief note if any"
+  "notes": "brief note about the meal"
 }
-Only return the JSON."""
-                    }
-                ],
-            }]
-        )
+Be as accurate as possible based on typical portion sizes."""
 
-        text = message.content[0].text.strip()
-        # Clean up if wrapped in code blocks
+        response = _vision_model.generate_content([prompt, image])
+        text = response.text.strip()
+
+        # Strip markdown code blocks if present
         if "```" in text:
-            text = text.split("```")[1].strip()
-            if text.startswith("json"):
-                text = text[4:].strip()
+            parts = text.split("```")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                try:
+                    return json.loads(part)
+                except json.JSONDecodeError:
+                    continue
 
         return json.loads(text)
-    except Exception as e:
-        # Return default if analysis fails
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parse error in analyze_food_photo: {e}")
         return {
             "meal_name": "Unknown meal",
-            "calories": 500,
-            "protein_g": 20,
-            "carbs_g": 50,
-            "fat_g": 15,
+            "calories": 400,
+            "protein_g": 20.0,
+            "carbs_g": 40.0,
+            "fat_g": 15.0,
             "confidence": "low",
-            "notes": f"Error in analysis: {str(e)}"
+            "notes": "Could not analyze photo accurately"
+        }
+    except Exception as e:
+        logger.error(f"Error in analyze_food_photo: {e}")
+        return {
+            "meal_name": "Unknown meal",
+            "calories": 400,
+            "protein_g": 20.0,
+            "carbs_g": 40.0,
+            "fat_g": 15.0,
+            "confidence": "low",
+            "notes": "Analysis failed"
         }
 
+
 async def get_daily_tip(user_data: dict, daily_summary: dict, lang: str) -> str:
-    """Generate a short motivational tip based on today's data"""
+    """Generate a short motivational tip using Gemini based on today's data."""
     try:
-        goal = user_data.get('goal', 'general')
-        fitness_level = user_data.get('fitness_level', 'beginner')
-        calories = daily_summary.get('total_calories', 0)
-        calorie_target = user_data.get('calorie_target', 2000)
-        protein = daily_summary.get('total_protein', 0)
-        protein_target = user_data.get('protein_target', 150)
-        gym = daily_summary.get('gym_session', 0)
+        lang_instruction = {
+            "ro": "Răspunde în limba română.",
+            "ru": "Отвечай на русском языке.",
+            "en": "Respond in English."
+        }.get(lang, "Respond in English.")
 
-        prompt = f"""User: goal={goal}, fitness={fitness_level}
-Today: {calories}/{calorie_target} kcal, {protein:.0f}/{protein_target:.0f}g protein, gym={'done' if gym else 'no'}
-Language: {lang} (respond in this language only)
+        goal = user_data.get("goal", "general_fitness")
+        fitness_level = user_data.get("fitness_level", "intermediate")
+        calorie_target = user_data.get("calorie_target", 2000)
+        total_calories = daily_summary.get("total_calories", 0)
+        total_protein = daily_summary.get("total_protein", 0)
+        had_gym = daily_summary.get("gym_session", 0)
 
-Give ONE short, specific, motivational fitness tip (max 1 sentence, 10-15 words). Be encouraging!"""
+        prompt = f"""You are a friendly fitness coach. {lang_instruction}
 
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=50,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return message.content[0].text.strip()
+User profile: goal={goal}, fitness_level={fitness_level}
+Today's data: calories consumed={total_calories}/{calorie_target} target, protein={total_protein}g, gym session today={'yes' if had_gym else 'no'}
+
+Give ONE short, specific, motivating tip (max 1 sentence) based on this data. Be concrete and actionable."""
+
+        response = _text_model.generate_content(prompt)
+        return response.text.strip()
+
     except Exception as e:
-        # Return generic tip on error
+        logger.error(f"Error in get_daily_tip: {e}")
         tips = {
-            "en": "Keep pushing towards your goal! 💪",
-            "ro": "Continua sa te lupta pentru obiectivele tale! 💪",
-            "ru": "Продолжайте работать над своими целями! 💪"
+            "ro": "Continuă să faci progres, fiecare zi contează! 💪",
+            "ru": "Продолжай двигаться вперёд, каждый день важен! 💪",
+            "en": "Keep pushing forward, every day counts! 💪"
         }
         return tips.get(lang, tips["en"])

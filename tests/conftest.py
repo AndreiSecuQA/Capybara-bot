@@ -166,6 +166,7 @@ async def sample_user(in_memory_db):
 
 @pytest.fixture
 def mock_anthropic_client():
-    """Mock Anthropic client for testing"""
-    with patch('bot.ai_engine.client') as mock_client:
-        yield mock_client
+    """Mock Gemini models for testing"""
+    with patch('bot.ai_engine._vision_model') as mock_vision, \
+         patch('bot.ai_engine._text_model') as mock_text:
+        yield mock_vision, mock_text

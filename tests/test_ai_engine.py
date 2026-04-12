@@ -5,14 +5,14 @@ from bot.ai_engine import analyze_food_photo, get_daily_tip
 
 
 class TestAnalyzeFoodPhoto:
-    """Test food photo analysis with Claude"""
+    """Test food photo analysis with Gemini"""
 
     @pytest.mark.asyncio
     async def test_analyze_food_photo_returns_dict(self, mock_anthropic_client):
         """Test that analyze_food_photo returns a dictionary"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = json.dumps({
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
             "meal_name": "Oatmeal with berries",
             "calories": 380,
             "protein_g": 12.5,
@@ -22,7 +22,7 @@ class TestAnalyzeFoodPhoto:
             "notes": "Healthy breakfast"
         })
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_vision.generate_content.return_value = mock_response
 
         result = await analyze_food_photo(b"fake_image_bytes", "en")
 
@@ -35,9 +35,9 @@ class TestAnalyzeFoodPhoto:
     @pytest.mark.asyncio
     async def test_analyze_food_photo_parses_json(self, mock_anthropic_client):
         """Test that analyze_food_photo correctly parses JSON"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = json.dumps({
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
             "meal_name": "Chicken Breast",
             "calories": 450,
             "protein_g": 50,
@@ -47,7 +47,7 @@ class TestAnalyzeFoodPhoto:
             "notes": ""
         })
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_vision.generate_content.return_value = mock_response
 
         result = await analyze_food_photo(b"image_data", "en")
 
@@ -58,11 +58,11 @@ class TestAnalyzeFoodPhoto:
     @pytest.mark.asyncio
     async def test_analyze_food_photo_handles_json_in_code_block(self, mock_anthropic_client):
         """Test analyze_food_photo extracts JSON from code blocks"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = '```json\n{"meal_name":"Pizza","calories":600,"protein_g":25,"carbs_g":80,"fat_g":20,"confidence":"medium","notes":""}\n```'
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = '```json\n{"meal_name":"Pizza","calories":600,"protein_g":25,"carbs_g":80,"fat_g":20,"confidence":"medium","notes":""}\n```'
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_vision.generate_content.return_value = mock_response
 
         result = await analyze_food_photo(b"fake_bytes", "en")
 
@@ -73,11 +73,11 @@ class TestAnalyzeFoodPhoto:
     @pytest.mark.asyncio
     async def test_analyze_food_photo_handles_markdown_code_block(self, mock_anthropic_client):
         """Test analyze_food_photo handles markdown code block without json prefix"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = '```\n{"meal_name":"Rice Bowl","calories":520,"protein_g":28,"carbs_g":75,"fat_g":12,"confidence":"high","notes":""}\n```'
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = '```\n{"meal_name":"Rice Bowl","calories":520,"protein_g":28,"carbs_g":75,"fat_g":12,"confidence":"high","notes":""}\n```'
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_vision.generate_content.return_value = mock_response
 
         result = await analyze_food_photo(b"image", "en")
 
@@ -87,21 +87,22 @@ class TestAnalyzeFoodPhoto:
     @pytest.mark.asyncio
     async def test_analyze_food_photo_returns_default_on_error(self, mock_anthropic_client):
         """Test analyze_food_photo returns default values on error"""
-        mock_anthropic_client.messages.create.side_effect = Exception("API Error")
+        mock_vision, mock_text = mock_anthropic_client
+        mock_vision.generate_content.side_effect = Exception("API Error")
 
         result = await analyze_food_photo(b"bad_data", "en")
 
         assert result["meal_name"] == "Unknown meal"
-        assert result["calories"] == 500
+        assert result["calories"] == 400
         assert result["confidence"] == "low"
-        assert "Error in analysis" in result["notes"]
+        assert result["notes"] == "Analysis failed"
 
     @pytest.mark.asyncio
     async def test_analyze_food_photo_with_different_languages(self, mock_anthropic_client):
         """Test analyze_food_photo works with different languages"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = json.dumps({
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
             "meal_name": "Salată",
             "calories": 250,
             "protein_g": 15,
@@ -111,7 +112,7 @@ class TestAnalyzeFoodPhoto:
             "notes": ""
         })
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_vision.generate_content.return_value = mock_response
 
         result = await analyze_food_photo(b"image", "ro")
 
@@ -121,12 +122,12 @@ class TestAnalyzeFoodPhoto:
     @pytest.mark.asyncio
     async def test_analyze_food_photo_confidence_levels(self, mock_anthropic_client):
         """Test analyze_food_photo with different confidence levels"""
+        mock_vision, mock_text = mock_anthropic_client
         confidence_levels = ["low", "medium", "high"]
 
         for confidence in confidence_levels:
-            mock_msg = MagicMock()
-            mock_msg.content = [MagicMock()]
-            mock_msg.content[0].text = json.dumps({
+            mock_response = MagicMock()
+            mock_response.text = json.dumps({
                 "meal_name": "Test Meal",
                 "calories": 400,
                 "protein_g": 20,
@@ -136,7 +137,7 @@ class TestAnalyzeFoodPhoto:
                 "notes": ""
             })
 
-            mock_anthropic_client.messages.create.return_value = mock_msg
+            mock_vision.generate_content.return_value = mock_response
 
             result = await analyze_food_photo(b"image", "en")
 
@@ -149,11 +150,11 @@ class TestGetDailyTip:
     @pytest.mark.asyncio
     async def test_get_daily_tip_returns_string(self, mock_anthropic_client):
         """Test that get_daily_tip returns a string"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = "Great job hitting your protein goal today!"
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = "Great job hitting your protein goal today!"
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_text.generate_content.return_value = mock_response
 
         user_data = {
             "goal": "gain_muscle",
@@ -174,14 +175,14 @@ class TestGetDailyTip:
     @pytest.mark.asyncio
     async def test_get_daily_tip_for_different_goals(self, mock_anthropic_client):
         """Test get_daily_tip with different fitness goals"""
+        mock_vision, mock_text = mock_anthropic_client
         goals = ["gain_muscle", "weight_loss", "endurance", "general_fitness"]
 
         for goal in goals:
-            mock_msg = MagicMock()
-            mock_msg.content = [MagicMock()]
-            mock_msg.content[0].text = f"Keep working on your {goal} goal!"
+            mock_response = MagicMock()
+            mock_response.text = f"Keep working on your {goal} goal!"
 
-            mock_anthropic_client.messages.create.return_value = mock_msg
+            mock_text.generate_content.return_value = mock_response
 
             user_data = {"goal": goal, "fitness_level": "intermediate", "calorie_target": 2000}
             daily = {"total_calories": 1800, "total_protein": 120, "gym_session": 0}
@@ -194,7 +195,8 @@ class TestGetDailyTip:
     @pytest.mark.asyncio
     async def test_get_daily_tip_returns_fallback_on_error(self, mock_anthropic_client):
         """Test get_daily_tip returns fallback tip on error"""
-        mock_anthropic_client.messages.create.side_effect = Exception("API Error")
+        mock_vision, mock_text = mock_anthropic_client
+        mock_text.generate_content.side_effect = Exception("API Error")
 
         user_data = {"goal": "gain_muscle", "fitness_level": "beginner", "calorie_target": 2000}
         daily = {"total_calories": 1500, "total_protein": 100, "gym_session": 0}
@@ -202,17 +204,17 @@ class TestGetDailyTip:
         tip = await get_daily_tip(user_data, daily, "en")
 
         assert isinstance(tip, str)
-        assert "goal" in tip.lower()
+        assert len(tip) > 0
 
     @pytest.mark.asyncio
     async def test_get_daily_tip_respects_language(self, mock_anthropic_client):
         """Test get_daily_tip uses the specified language"""
+        mock_vision, mock_text = mock_anthropic_client
         for lang in ["en", "ro", "ru"]:
-            mock_msg = MagicMock()
-            mock_msg.content = [MagicMock()]
-            mock_msg.content[0].text = f"Tip in {lang}"
+            mock_response = MagicMock()
+            mock_response.text = f"Tip in {lang}"
 
-            mock_anthropic_client.messages.create.return_value = mock_msg
+            mock_text.generate_content.return_value = mock_response
 
             user_data = {"goal": "general", "fitness_level": "beginner", "calorie_target": 2000}
             daily = {"total_calories": 1800, "total_protein": 100, "gym_session": 0}
@@ -224,11 +226,11 @@ class TestGetDailyTip:
     @pytest.mark.asyncio
     async def test_get_daily_tip_with_complete_user_data(self, mock_anthropic_client):
         """Test get_daily_tip with comprehensive user and daily data"""
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock()]
-        mock_msg.content[0].text = "You're crushing it! Keep it up!"
+        mock_vision, mock_text = mock_anthropic_client
+        mock_response = MagicMock()
+        mock_response.text = "You're crushing it! Keep it up!"
 
-        mock_anthropic_client.messages.create.return_value = mock_msg
+        mock_text.generate_content.return_value = mock_response
 
         user_data = {
             "goal": "muscle_gain",

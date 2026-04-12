@@ -4,7 +4,7 @@
 - GitHub account with the repo
 - Railway account (free at railway.app)
 - Telegram Bot Token (from @BotFather)
-- Anthropic API Key (from console.anthropic.com)
+- Google Gemini API Key (free at https://aistudio.google.com/app/apikey)
 
 ## Steps
 
@@ -21,7 +21,8 @@ Go to [railway.app](https://railway.app) and sign up with your GitHub account.
 In Railway dashboard → your service → **Variables** tab, add:
 ```
 TELEGRAM_TOKEN=8630601890:AAGcL-2ey6PbNBB8E_hraHei20SKEwfuWAs
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-1.5-flash
 TIMEZONE=Europe/Bucharest
 ```
 
