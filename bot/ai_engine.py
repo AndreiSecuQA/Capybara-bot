@@ -3,7 +3,11 @@ import base64
 import json
 from config import ANTHROPIC_API_KEY
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+try:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+except Exception:
+    # Fallback for testing or if API key is not available
+    client = None
 
 async def analyze_food_photo(image_bytes: bytes, lang: str) -> dict:
     """Send photo to Claude Vision and get nutrition data"""
