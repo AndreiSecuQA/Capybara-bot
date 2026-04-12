@@ -47,3 +47,34 @@ Every time you push to GitHub, Railway automatically redeploys — zero downtime
 ## Cost
 - Free tier: $5 credit/month (enough for a small bot)
 - Hobby plan: $5/month for always-on service
+
+## 🛠️ Dev Agent Setup
+
+The `/dev` command lets you make code changes directly from Telegram. Claude reads the relevant files, makes the changes, pushes to GitHub, and Railway auto-redeploys.
+
+### Additional Railway Variables needed:
+```
+ADMIN_TELEGRAM_ID=your_telegram_user_id
+ANTHROPIC_API_KEY=your_claude_api_key
+GITHUB_TOKEN=your_github_pat
+GITHUB_REPO=AndreiSecuQA/Capybara-bot
+```
+
+### How to get each:
+- **ADMIN_TELEGRAM_ID**: Message @userinfobot on Telegram, copy your user ID
+- **ANTHROPIC_API_KEY**: Create key at https://console.anthropic.com
+- **GITHUB_TOKEN**: Create at https://github.com/settings/tokens (needs `repo` scope)
+
+### Usage:
+- `/dev add a /weight command to update current weight`
+- `/dev change the gym reminder time to 20:30`
+- `/dev add calorie goal progress to the daily summary`
+
+Claude will autonomously:
+1. Read the relevant files from the repo
+2. Understand the current code structure
+3. Make the requested changes
+4. Commit and push to GitHub
+5. Railway redeploys automatically (~2 min)
+
+Only the user with ADMIN_TELEGRAM_ID can use this command.

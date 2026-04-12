@@ -7,6 +7,7 @@ from database import init_db
 from bot.onboarding import onboarding_handler
 from bot.workout import workout_handler
 from bot.food import food_handler, food_action_handler, food_edit_handler
+from bot.dev_agent import dev_command
 from bot import handlers
 
 logging.basicConfig(
@@ -36,6 +37,7 @@ async def main():
     app.add_handler(CommandHandler("stats", handlers.stats_cmd))
     app.add_handler(CommandHandler("gym", handlers.gym_cmd))
     app.add_handler(CommandHandler("settings", handlers.settings_cmd))
+    app.add_handler(CommandHandler("dev", dev_command))
 
     # Text message handler (for menu buttons and other text)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.text_handler))
