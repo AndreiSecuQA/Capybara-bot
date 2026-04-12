@@ -1,4 +1,4 @@
-name: Tests
+name: Tests & Build
 
 on:
   push:
@@ -30,6 +30,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: "fake_token_for_testing"
           ANTHROPIC_API_KEY: "fake_key_for_testing"
+          DATABASE_PATH: ":memory:"
         run: |
           pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
 
@@ -41,3 +42,14 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t capybara-bot .
+
+      - name: Verify image
+        run: docker images capybara-bot
