@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, CommandHandler, filters
 from telegram.error import BadRequest
 from database import create_user, get_user, update_user
 from i18n import t
@@ -429,28 +429,24 @@ async def cancel_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 # Conversation handler setup
-from telegram.ext import MessageHandler, CallbackQueryHandler, filters
-
 onboarding_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", start_onboarding)] if 'CommandHandler' in dir() else [],
+    entry_points=[CommandHandler("start", start_onboarding)],
     states={
-        LANG: [CallbackQueryHandler(set_language)],
-        GENDER: [CallbackQueryHandler(set_gender)],
+        LANG: [CallbackQueryHandler(set_language, pattern="^lang_")],
+        GENDER: [CallbackQueryHandler(set_gender, pattern="^gender_")],
         AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_age)],
         HEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_height)],
         WEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_weight)],
-        GOAL: [CallbackQueryHandler(set_goal)],
-        GYM_FREQ: [CallbackQueryHandler(set_gym_frequency)],
-        GYM_DUR: [CallbackQueryHandler(set_gym_duration)],
-        FITNESS: [CallbackQueryHandler(set_fitness_level)],
-        DIET: [CallbackQueryHandler(set_diet)],
+        GOAL: [CallbackQueryHandler(set_goal, pattern="^goal_")],
+        GYM_FREQ: [CallbackQueryHandler(set_gym_frequency, pattern="^freq_")],
+        GYM_DUR: [CallbackQueryHandler(set_gym_duration, pattern="^dur_")],
+        FITNESS: [CallbackQueryHandler(set_fitness_level, pattern="^fit_")],
+        DIET: [CallbackQueryHandler(set_diet, pattern="^diet_")],
         WAKE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_wake_time)],
         SLEEP: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_sleep_time)],
-        WATER: [CallbackQueryHandler(set_water_goal)],
+        WATER: [CallbackQueryHandler(set_water_goal, pattern="^water_")],
         HEALTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_health)],
     },
-    fallbacks=[CommandHandler("cancel", cancel_onboarding)] if 'CommandHandler' in dir() else [],
+    fallbacks=[CommandHandler("cancel", cancel_onboarding)],
+    per_message=False,
 )
-
-# Import after defining for proper registration
-from telegram.ext import CommandHandler

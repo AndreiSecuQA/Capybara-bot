@@ -181,11 +181,12 @@ workout_handler = ConversationHandler(
         CallbackQueryHandler(lambda u, c: start_gym_session_cmd(u, c), pattern="^gym$")
     ],
     states={
-        GYM_MENU: [CallbackQueryHandler(gym_menu_handler)],
+        GYM_MENU: [CallbackQueryHandler(gym_menu_handler, pattern="^(add_ex|view_ex|finish_gym)$")],
         EXERCISE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_exercise_name)],
-        SETS: [CallbackQueryHandler(ask_sets)],
-        REPS: [CallbackQueryHandler(ask_reps)],
+        SETS: [CallbackQueryHandler(ask_sets, pattern="^sets_")],
+        REPS: [CallbackQueryHandler(ask_reps, pattern="^reps_")],
         WEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_weight)],
     },
     fallbacks=[CommandHandler("cancel", cancel_workout)],
+    per_message=False,
 )
