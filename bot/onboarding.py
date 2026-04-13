@@ -428,14 +428,34 @@ async def ask_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
+# Menu button texts in all languages that should escape the conversation
+MENU_BUTTONS = [
+    # Romanian
+    "🏋️ Merg la sală", "📸 Loghează mâncare", "📊 Progresul meu", "📈 Statistici", "⚙️ Setări",
+    # English
+    "🏋️ Go to Gym", "📸 Log Food", "📊 My Progress", "📈 Stats", "⚙️ Settings",
+    # Russian
+    "🏋️ В зал", "📸 Записать еду", "📊 Мой прогресс", "📈 Статистика", "⚙️ Настройки",
+]
+
 async def cancel_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel onboarding"""
     lang = context.user_data.get("lang", "en")
     await context.bot.send_message(
         update.effective_user.id,
-        t(lang, "cancel")
+        t(lang, "cancel"),
+        reply_markup=main_menu_keyboard(lang)
     )
     return ConversationHandler.END
+
+async def handle_menu_escape(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """If user presses a main menu button while in onboarding, exit and route to the menu"""
+    # Import here to avoid circular imports
+    from bot.handlers import text_handler
+    # Clear onboarding state
+    context.user_data.clear()
+    # Route to text_handler to process the menu button
+    return await text_handler(update, context)
 
 # Conversation handler setup
 onboarding_handler = ConversationHandler(
@@ -457,6 +477,11 @@ onboarding_handler = ConversationHandler(
         WATER: [CallbackQueryHandler(set_water_goal, pattern="^water_")],
         HEALTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_health)],
     },
-    fallbacks=[CommandHandler("cancel", cancel_onboarding)],
+    fallbacks=[
+        CommandHandler("cancel", cancel_onboarding),
+        CommandHandler("start", start_onboarding),
+        MessageHandler(filters.TEXT & filters.Regex("|".join(re.escape(btn) for btn in MENU_BUTTONS)), handle_menu_escape),
+    ],
     per_message=False,
+    allow_reentry=True,
 )

@@ -143,22 +143,29 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = user["language"] or "en"
     text = update.message.text
 
-    # Check all possible button names in all languages
-    if text in [t(lang, "btn_gym"), "🏋️ Go to Gym", "🏋️ Мег в зал", "🏋️ Iду в зал"]:
+    # Build button texts from i18n for the current language
+    gym_btn = t(lang, "btn_gym")
+    food_btn = t(lang, "btn_food")
+    progress_btn = t(lang, "btn_progress")
+    stats_btn = t(lang, "btn_stats")
+    settings_btn = t(lang, "btn_settings")
+
+    # Check button presses
+    if text == gym_btn:
         from bot.workout import start_gym_session_cmd
         return await start_gym_session_cmd(update, context)
 
-    elif text in [t(lang, "btn_food"), "📸 Log Food", "📸 Loghează mâncare", "📸 Записать еду"]:
-        await context.bot.send_message(user_id, "📸 Send me a photo of your meal!")
+    elif text == food_btn:
+        await context.bot.send_message(user_id, t(lang, "food_photo_received"))
         return
 
-    elif text in [t(lang, "btn_progress"), "📊 My Progress", "📊 Progresul meu", "📊 Мой прогресс"]:
+    elif text == progress_btn:
         await show_daily_progress(update, context, user_id, lang)
 
-    elif text in [t(lang, "btn_stats"), "📈 Stats", "📈 Statistici", "📈 Статистика"]:
+    elif text == stats_btn:
         await stats_cmd(update, context)
 
-    elif text in [t(lang, "btn_settings"), "⚙️ Settings", "⚙️ Setări", "⚙️ Настройки"]:
+    elif text == settings_btn:
         await settings_cmd(update, context)
 
     else:
@@ -167,4 +174,8 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from bot.food import handle_food_edit_input
             return await handle_food_edit_input(update, context)
         else:
-            await context.bot.send_message(user_id, t(lang, "invalid_input"))
+            await context.bot.send_message(
+                user_id,
+                t(lang, "invalid_input"),
+                reply_markup=main_menu_keyboard(lang)
+            )

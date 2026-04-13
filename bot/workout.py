@@ -2,8 +2,9 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 from database import start_gym_session, add_exercise, end_gym_session, get_session_exercises, get_user
 from i18n import t
-from bot.keyboards import gym_menu_keyboard, sets_keyboard, reps_keyboard, confirm_keyboard
+from bot.keyboards import gym_menu_keyboard, sets_keyboard, reps_keyboard, confirm_keyboard, main_menu_keyboard
 from bot.progress import show_daily_progress
+import re
 
 GYM_MENU, ADD_EXERCISE, EXERCISE_NAME, SETS, REPS, WEIGHT = range(6)
 
@@ -168,11 +169,33 @@ async def ask_weight(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return GYM_MENU
 
+# Menu button texts in all languages
+MENU_BUTTONS = [
+    # Romanian
+    "🏋️ Merg la sală", "📸 Loghează mâncare", "📊 Progresul meu", "📈 Statistici", "⚙️ Setări",
+    # English
+    "🏋️ Go to Gym", "📸 Log Food", "📊 My Progress", "📈 Stats", "⚙️ Settings",
+    # Russian
+    "🏋️ В зал", "📸 Записать еду", "📊 Мой прогресс", "📈 Статистика", "⚙️ Настройки",
+]
+
 async def cancel_workout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel workout"""
     lang = context.user_data.get("lang", "en")
-    await context.bot.send_message(update.effective_user.id, t(lang, "cancel"))
+    await context.bot.send_message(
+        update.effective_user.id,
+        t(lang, "cancel"),
+        reply_markup=main_menu_keyboard(lang)
+    )
     return ConversationHandler.END
+
+async def handle_menu_escape(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """If user presses a main menu button while in workout, exit and route to the menu"""
+    from bot.handlers import text_handler
+    # Clear workout state
+    context.user_data.clear()
+    # Route to text_handler to process the menu button
+    return await text_handler(update, context)
 
 # Conversation handler
 workout_handler = ConversationHandler(
@@ -187,6 +210,11 @@ workout_handler = ConversationHandler(
         REPS: [CallbackQueryHandler(ask_reps, pattern="^reps_")],
         WEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_weight)],
     },
-    fallbacks=[CommandHandler("cancel", cancel_workout)],
+    fallbacks=[
+        CommandHandler("cancel", cancel_workout),
+        CommandHandler("start", start_gym_session_cmd),
+        MessageHandler(filters.TEXT & filters.Regex("|".join(re.escape(btn) for btn in MENU_BUTTONS)), handle_menu_escape),
+    ],
     per_message=False,
+    allow_reentry=True,
 )
