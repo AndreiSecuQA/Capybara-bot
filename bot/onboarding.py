@@ -77,19 +77,28 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         query.from_user.id,
         t(lang_code, "ask_name")
     )
-    return GENDER
+    return NAME
 
-async def ask_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Ask for gender"""
+async def handle_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle name input and ask for gender"""
     lang = context.user_data["lang"]
-    context.user_data["name"] = update.message.text
+    name = update.message.text.strip()
+
+    if len(name) < 1 or len(name) > 50:
+        await context.bot.send_message(
+            update.effective_user.id,
+            t(lang, "invalid_input")
+        )
+        return NAME
+
+    context.user_data["name"] = name
 
     await context.bot.send_message(
         update.effective_user.id,
         t(lang, "ask_gender"),
         reply_markup=gender_keyboard(lang)
     )
-    return AGE
+    return GENDER
 
 async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Set gender and ask age"""
@@ -102,7 +111,7 @@ async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await query.edit_message_text(
         text=t(lang, "ask_age")
     )
-    return HEIGHT
+    return AGE
 
 async def ask_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Validate age and ask height"""
@@ -433,6 +442,7 @@ onboarding_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start_onboarding)],
     states={
         LANG: [CallbackQueryHandler(set_language, pattern="^lang_")],
+        NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name)],
         GENDER: [CallbackQueryHandler(set_gender, pattern="^gender_")],
         AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_age)],
         HEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_height)],
