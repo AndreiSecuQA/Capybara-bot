@@ -10,7 +10,7 @@ from bot.keyboards import (
 )
 import re
 
-LANG, GENDER, AGE, HEIGHT, WEIGHT, GOAL, GYM_FREQ, GYM_DUR, FITNESS, DIET, WAKE, SLEEP, WATER, HEALTH, COMPLETE = range(15)
+LANG, NAME, GENDER, AGE, HEIGHT, WEIGHT, GOAL, GYM_FREQ, GYM_DUR, FITNESS, DIET, WAKE, SLEEP, WATER, HEALTH, COMPLETE = range(16)
 
 goal_map = {
     "goal_lose": "weight_loss",
