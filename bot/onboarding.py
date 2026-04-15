@@ -384,30 +384,35 @@ async def ask_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     fat_target = (calorie_target * fat_ratio) / 9
 
     user_id = context.user_data["user_id"]
-    await update_user(user_id, **{
-        "language": lang,
-        "gender": gender,
-        "name": context.user_data["name"],
-        "age": context.user_data["age"],
-        "height_cm": context.user_data["height"],
-        "weight_kg": context.user_data["weight"],
-        "goal": context.user_data["goal"],
-        "gym_frequency": context.user_data["gym_frequency"],
-        "gym_duration_min": context.user_data["gym_duration"],
-        "fitness_level": context.user_data["fitness"],
-        "diet_preference": context.user_data["diet"],
-        "wake_time": context.user_data["wake_time"],
-        "sleep_time": context.user_data["sleep_time"],
-        "daily_water_goal": context.user_data["water_goal"],
-        "health_conditions": context.user_data["health"],
-        "bmi": bmi,
-        "bmi_category": bmi_category,
-        "calorie_target": calorie_target,
-        "protein_target": protein_target,
-        "carbs_target": carbs_target,
-        "fat_target": fat_target,
-        "onboarding_complete": 1
-    })
+    try:
+        await update_user(user_id, **{
+            "language": lang,
+            "gender": gender,
+            "name": context.user_data["name"],
+            "age": context.user_data["age"],
+            "height_cm": context.user_data["height"],
+            "weight_kg": context.user_data["weight"],
+            "goal": context.user_data["goal"],
+            "gym_frequency": context.user_data["gym_frequency"],
+            "gym_duration_min": context.user_data["gym_duration"],
+            "fitness_level": context.user_data["fitness"],
+            "diet_preference": context.user_data["diet"],
+            "wake_time": context.user_data["wake_time"],
+            "sleep_time": context.user_data["sleep_time"],
+            "daily_water_goal": context.user_data["water_goal"],
+            "health_conditions": context.user_data["health"],
+            "bmi": bmi,
+            "bmi_category": bmi_category,
+            "calorie_target": calorie_target,
+            "protein_target": protein_target,
+            "carbs_target": carbs_target,
+            "fat_target": fat_target,
+            "onboarding_complete": 1
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"update_user failed in ask_health: {e}")
+        # Even if DB update fails, end the conversation and show menu
 
     complete_msg = t(lang, "onboarding_complete",
         name=context.user_data["name"],

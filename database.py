@@ -36,6 +36,24 @@ async def init_db():
             )
         """)
 
+        # Migrations: add columns to existing DBs that were created without them
+        _migrations = [
+            "ALTER TABLE users ADD COLUMN gender TEXT",
+            "ALTER TABLE users ADD COLUMN bmi REAL",
+            "ALTER TABLE users ADD COLUMN bmi_category TEXT",
+            "ALTER TABLE users ADD COLUMN calorie_target REAL DEFAULT 2000",
+            "ALTER TABLE users ADD COLUMN protein_target REAL DEFAULT 150",
+            "ALTER TABLE users ADD COLUMN carbs_target REAL DEFAULT 200",
+            "ALTER TABLE users ADD COLUMN fat_target REAL DEFAULT 65",
+        ]
+        for _m in _migrations:
+            try:
+                await db.execute(_m)
+            except Exception:
+                pass  # Column already exists — safe to ignore
+
+        await db.commit()
+
         await db.execute("""
             CREATE TABLE IF NOT EXISTS gym_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
